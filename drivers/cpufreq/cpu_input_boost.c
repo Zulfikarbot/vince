@@ -35,6 +35,7 @@ struct boost_policy {
 static DEFINE_PER_CPU(struct boost_policy, boost_info);
 static struct workqueue_struct *boost_wq;
 static struct work_struct boost_work;
+static spinlock_t boost_lock;
 
 static bool boost_running;
 static bool freqs_available __read_mostly;
@@ -173,6 +174,13 @@ static int cpu_do_boost(struct notifier_block *nb, unsigned long val, void *data
 	if (policy->cpu > 2)
 		return NOTIFY_OK;
 
+	spin_lock(&boost_lock);
+	b_freq = boost_freq[policy->cpu];
+	spin_unlock(&boost_lock);
+
+	if (!b_freq)
+		return NOTIFY_OK;
+
 	switch (b->boost_state) {
 	case UNBOOST:
 		policy->min = policy->cpuinfo.min_freq;
@@ -277,7 +285,85 @@ static struct input_handler cpu_boost_input_handler = {
 	.id_table	= cpu_boost_ids,
 };
 
-static int __init cpu_input_boost_init(void)
+/**************************** SYSFS START ****************************/
+static struct kobject *cpu_input_boost_kobject;
+
+static ssize_t boost_freqs_write(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	unsigned int freq[3], i = 0;
+	int ret = sscanf(buf, "%u %u %u", &freq[0], &freq[1], &freq[2]);
+
+	if (ret != 3)
+		return -EINVAL;
+
+	if (!freq[0] || !freq[1] || !freq[2])
+		return -EINVAL;
+
+	/* Freq order should be [high, mid, low], so always order it like that */
+	spin_lock(&boost_lock);
+	boost_freq[0] = max3(freq[0], freq[1], freq[2]);
+	boost_freq[2] = min3(freq[0], freq[1], freq[2]);
+
+	while (++i) {
+		if ((freq[i] == boost_freq[0]) ||
+			(freq[i] == boost_freq[2])) {
+			freq[i] = 0;
+			i = 0;
+		} else if (freq[i]) {
+			boost_freq[1] = freq[i];
+			break;
+		}
+	}
+	spin_unlock(&boost_lock);
+
+	freqs_available = true;
+
+	return size;
+}
+
+static ssize_t enabled_write(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	unsigned int data;
+	int ret = sscanf(buf, "%u", &data);
+
+	if (ret != 1)
+		return -EINVAL;
+
+	enabled = data;
+
+	return size;
+}
+
+static ssize_t up_threshold_write(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	unsigned int data;
+	int ret = sscanf(buf, "%u", &data);
+
+	if (ret != 1)
+		return -EINVAL;
+
+	up_threshold = data;
+
+	return size;
+}
+
+static ssize_t boost_freqs_read(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u %u %u\n", boost_freq[0], boost_freq[1], boost_freq[2]);
+}
+
+static ssize_t enabled_read(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u\n", enabled);
+}
+
+static ssize_t up_threshold_read(struct device *dev,
+		struct device_attribute *attr, char *buf)
 {
 	struct cpufreq_frequency_table *table = cpufreq_frequency_get_table(0);
 	struct boost_policy *b;
@@ -313,6 +399,8 @@ static int __init cpu_input_boost_init(void)
 		ret = -EFAULT;
 		goto err;
 	}
+
+	spin_lock_init(&boost_lock);
 
 	cpufreq_register_notifier(&cpu_do_boost_nb, CPUFREQ_POLICY_NOTIFIER);
 
