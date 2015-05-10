@@ -11,7 +11,7 @@
  * GNU General Public License for more details.
  */
 
-#define pr_fmt(fmt) "CPU-boost: " fmt
+#define pr_fmt(fmt) "CPU-iboost: " fmt
 
 #include <linux/cpu.h>
 #include <linux/cpufreq.h>
@@ -200,7 +200,7 @@ static struct notifier_block cpu_do_boost_nb = {
 	.notifier_call = cpu_do_boost,
 };
 
-static void cpu_boost_input_event(struct input_handle *handle, unsigned int type,
+static void cpu_iboost_input_event(struct input_handle *handle, unsigned int type,
 		unsigned int code, int value)
 {
 	u64 now;
@@ -219,7 +219,7 @@ static void cpu_boost_input_event(struct input_handle *handle, unsigned int type
 	last_input_time = ktime_to_us(ktime_get());
 }
 
-static int cpu_boost_input_connect(struct input_handler *handler,
+static int cpu_iboost_input_connect(struct input_handler *handler,
 		struct input_dev *dev, const struct input_device_id *id)
 {
 	struct input_handle *handle;
@@ -231,7 +231,7 @@ static int cpu_boost_input_connect(struct input_handler *handler,
 
 	handle->dev = dev;
 	handle->handler = handler;
-	handle->name = "cpu_input_boost";
+	handle->name = "cpu_iboost";
 
 	error = input_register_handle(handle);
 	if (error)
@@ -249,14 +249,14 @@ err2:
 	return error;
 }
 
-static void cpu_boost_input_disconnect(struct input_handle *handle)
+static void cpu_iboost_input_disconnect(struct input_handle *handle)
 {
 	input_close_device(handle);
 	input_unregister_handle(handle);
 	kfree(handle);
 }
 
-static const struct input_device_id cpu_boost_ids[] = {
+static const struct input_device_id cpu_iboost_ids[] = {
 	/* multi-touch touchscreen */
 	{
 		.flags = INPUT_DEVICE_ID_MATCH_EVBIT |
@@ -277,16 +277,16 @@ static const struct input_device_id cpu_boost_ids[] = {
 	{ },
 };
 
-static struct input_handler cpu_boost_input_handler = {
-	.event		= cpu_boost_input_event,
-	.connect	= cpu_boost_input_connect,
-	.disconnect	= cpu_boost_input_disconnect,
-	.name		= "cpu_input_boost",
-	.id_table	= cpu_boost_ids,
+static struct input_handler cpu_iboost_input_handler = {
+	.event		= cpu_iboost_input_event,
+	.connect	= cpu_iboost_input_connect,
+	.disconnect	= cpu_iboost_input_disconnect,
+	.name		= "cpu_iboost",
+	.id_table	= cpu_iboost_ids,
 };
 
 /**************************** SYSFS START ****************************/
-static struct kobject *cpu_input_boost_kobject;
+static struct kobject *cpu_iboost_kobject;
 
 static ssize_t boost_freqs_write(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
@@ -376,24 +376,24 @@ static ssize_t up_threshold_read(struct device *dev,
 		goto err;
 	}
 
-	/* Calculate ideal boost freqs */
-	for (i = 0; i < 3; i++)
-		req_freq[i] = maxfreq * boost_factor[i] / BOOST_FACTOR_DIVISOR;
+static struct attribute *cpu_iboost_attr[] = {
+	&dev_attr_boost_freqs.attr,
+	&dev_attr_enabled.attr,
+	&dev_attr_up_threshold.attr,
+	NULL
+};
 
-	/* Find actual freqs closest to ideal boost freqs */
-	for (i = 0;; i++) {
-		int curr = table[i].frequency - req_freq[b_level];
-		int prev = table[i ? i - 1 : 0].frequency - req_freq[b_level];
+static struct attribute_group cpu_iboost_attr_group = {
+	.attrs  = cpu_iboost_attr,
+};
+/**************************** SYSFS END ****************************/
 
-		if (!curr || (curr > 0 && prev < 0)) {
-			boost_freq[2 - b_level] = table[i].frequency;
-			b_level++;
-			if (b_level == 3)
-				break;
-		}
-	}
+static int __init cpu_iboost_init(void)
+{
+	struct boost_policy *b;
+	int i, ret;
 
-	boost_wq = alloc_workqueue("cpu_input_boost_wq", WQ_HIGHPRI, 0);
+	boost_wq = alloc_workqueue("cpu_iboost_wq", WQ_HIGHPRI, 0);
 	if (!boost_wq) {
 		pr_err("Failed to allocate workqueue\n");
 		ret = -EFAULT;
@@ -412,13 +412,27 @@ static ssize_t up_threshold_read(struct device *dev,
 
 	INIT_WORK(&boost_work, cpu_boost_main);
 
-	ret = input_register_handler(&cpu_boost_input_handler);
-	if (ret)
+	ret = input_register_handler(&cpu_iboost_input_handler);
+	if (ret) {
 		pr_err("Failed to register input handler, err: %d\n", ret);
+		goto err;
+	}
+
+	cpu_iboost_kobject = kobject_create_and_add("cpu_input_boost", kernel_kobj);
+	if (!cpu_iboost_kobject) {
+		pr_err("Failed to create kobject\n");
+		goto err;
+	}
+
+	ret = sysfs_create_group(cpu_iboost_kobject, &cpu_iboost_attr_group);
+	if (ret) {
+		pr_err("Failed to create sysfs interface\n");
+		kobject_put(cpu_iboost_kobject);
+	}
 err:
 	return ret;
 }
-late_initcall(cpu_input_boost_init);
+late_initcall(cpu_iboost_init);
 
 MODULE_AUTHOR("Sultanxda <sultanxda@gmail.com>");
 MODULE_DESCRIPTION("CPU Input Boost");
