@@ -118,17 +118,12 @@ static int cpu_do_boost(struct notifier_block *nb, unsigned long val, void *data
 		return NOTIFY_OK;
 	}
 
-	b_freq = boost_freq[policy->cpu];
-
 	switch (b->boost_state) {
 	case UNBOOST:
 		policy->min = policy->cpuinfo.min_freq;
 		break;
 	case BOOST:
-		if (boost_freq[policy->cpu] > policy->max)
-			policy->min = policy->max;
-		else
-			policy->min = boost_freq[policy->cpu];
+		policy->min = min(policy->max, boost_freq[policy->cpu]);
 		break;
 	}
 
