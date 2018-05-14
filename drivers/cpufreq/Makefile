@@ -20,6 +20,9 @@ ifeq ($(CONFIG_CPU_INPUT_BOOST),y)
 cpu_boost-objs				:= cpu_input_boost.o
 endif
 
+# CPU wake boost
+obj-$(CONFIG_CPU_WAKE_BOOST)		+= cpu_wake_boost.o
+
 obj-$(CONFIG_CPUFREQ_DT)		+= cpufreq-dt.o
 
 ##################################################################################
