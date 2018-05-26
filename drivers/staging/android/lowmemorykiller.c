@@ -44,7 +44,11 @@
 #define CREATE_TRACE_POINTS
 #include "trace/lowmemorykiller.h"
 
-static uint32_t lowmem_debug_level = 0;
+/* to enable lowmemorykiller */
+static int enable_lmk = 0;
+module_param_named(enable_lmk, enable_lmk, int, 0644);
+
+static u32 lowmem_debug_level = 0;
 static short lowmem_adj[6] = {
 	0,
 	1,
