@@ -1213,6 +1213,7 @@ static struct clk_freq_tbl ftbl_gcc_camss_cpp_clk_8937[] = {
 	F( 308570000,          gpll6,  3.5,    0,     0),
 	F( 320000000,          gpll0,  2.5,    0,     0),
 	F( 360000000,          gpll6,    3,    0,     0),
+	F( 400000000,          gpll6,    3,    0,     0),
 	F_END
 };
 
@@ -1605,6 +1606,7 @@ static struct clk_freq_tbl ftbl_gcc_mdss_mdp_clk[] = {
 	F( 200000000,	gpll0,	4,	0,	0),
 	F( 266670000,	gpll0,	3,	0,	0),
 	F( 320000000,	gpll0,	2.5,	0,	0),
+	F( 380000000,	gpll0,	2,	0,	0),
 	F_END
 };
 
@@ -1618,7 +1620,7 @@ static struct rcg_clk mdp_clk_src = {
 		.dbg_name = "mdp_clk_src",
 		.ops = &clk_ops_rcg,
 		VDD_DIG_FMAX_MAP3(LOWER, 160000000, NOMINAL, 266670000,
-				  HIGH, 320000000),
+				  HIGH, 380000000),
 		CLK_INIT(mdp_clk_src.c),
 	},
 };
@@ -4210,7 +4212,7 @@ static void override_for_8917(int speed_bin)
 
 static void override_for_8937(int speed_bin)
 {
-	gpll3_clk_src.c.rate = 900000000;
+	gpll3_clk_src.c.rate = 1220000000;
 	gpll3_clk_src.vco_tbl = p_vco_8937;
 	gpll3_clk_src.num_vco = ARRAY_SIZE(p_vco_8937);
 	OVERRIDE_FMAX2(gpll3, LOW, 800000000, NOMINAL, 1066000000);
@@ -4250,7 +4252,7 @@ static void override_for_8937(int speed_bin)
 
 	OVERRIDE_FMAX5(cpp,
 		LOWER, 160000000, LOW, 266670000, NOMINAL, 320000000,
-		NOM_PLUS, 342860000, HIGH, 360000000);
+		NOM_PLUS, 342860000, HIGH, 400000000);
 	OVERRIDE_FTABLE(cpp, ftbl_gcc_camss_cpp_clk, 8937);
 	OVERRIDE_FMAX5(jpeg0,
 		LOWER, 133330000, LOW, 200000000, NOMINAL, 266670000,
