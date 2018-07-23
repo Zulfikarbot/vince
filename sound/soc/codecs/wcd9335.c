@@ -168,7 +168,17 @@ enum tasha_sido_voltage {
 
 static enum codec_variant codec_ver;
 
-static int dig_core_collapse_enable = 0;
+static int huwifi_mode = 1;
+module_param(huwifi_mode, int,
+	S_IRUGO | S_IWUSR | S_IWGRP);
+MODULE_PARM_DESC(huwifi_mode, "enable/disable l UHQA Mode");
+
+static int low_distort_amp = 1;
+module_param(low_distort_amp, int,
+	S_IRUGO | S_IWUSR | S_IWGRP);
+MODULE_PARM_DESC(low_distort_amp, "enable/disable l Class AB Mode");
+
+static int dig_core_collapse_enable = 1;
 module_param(dig_core_collapse_enable, int,
 		S_IRUGO | S_IWUSR | S_IWGRP);
 MODULE_PARM_DESC(dig_core_collapse_enable, "enable/disable power gating");
