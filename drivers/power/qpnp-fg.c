@@ -237,7 +237,7 @@ enum fg_mem_data_index {
 
 static struct fg_mem_setting settings[FG_MEM_SETTING_MAX] = {
 	/*       ID                    Address, Offset, Value*/
-#ifdef CONFIG_MACH_XIAOMI_TISSOT
+#ifdef CONFIG_MACH_XIAOMI_VINCE
         SETTING(SOFT_COLD,       0x454,   0,      150),
         SETTING(SOFT_HOT,        0x454,   1,      450),
         SETTING(HARD_COLD,       0x454,   2,      0),
@@ -255,7 +255,7 @@ static struct fg_mem_setting settings[FG_MEM_SETTING_MAX] = {
 	SETTING(CHG_TERM_CURRENT, 0x4F8,   2,      250),
 	SETTING(IRQ_VOLT_EMPTY,	 0x458,   3,      3100),
 	SETTING(CUTOFF_VOLTAGE,	 0x40C,   0,      3200),
-#if (defined CONFIG_MACH_XIAOMI_MIDO) || (defined CONFIG_MACH_XIAOMI_TISSOT)
+#if (defined CONFIG_MACH_XIAOMI_MIDO) || (defined CONFIG_MACH_XIAOMI_TISSOT) || (defined CONFIG_MACH_XIAOMI_VINCE)
 	SETTING(VBAT_EST_DIFF,	 0x000,   0,      200),
 #else
 	SETTING(VBAT_EST_DIFF,	 0x000,   0,      30),
@@ -341,7 +341,7 @@ module_param_named(
 	battery_type, fg_batt_type, charp, S_IRUSR | S_IWUSR
 );
 
-#if (defined CONFIG_MACH_XIAOMI_MIDO) || (defined CONFIG_MACH_XIAOMI_TISSOT)
+#if (defined CONFIG_MACH_XIAOMI_MIDO) || (defined CONFIG_MACH_XIAOMI_TISSOT) || (defined CONFIG_MACH_XIAOMI_VINCE)
 static int fg_sram_update_period_ms = 3000;
 #else
 static int fg_sram_update_period_ms = 30000;
@@ -4501,7 +4501,7 @@ static bool fg_validate_battery_info(struct fg_chip *chip)
 		batt_soc = DIV_ROUND_CLOSEST((batt_soc - 1) *
 				(FULL_CAPACITY - 2), FULL_SOC_RAW - 2) + 1;
 
-#ifdef CONFIG_MACH_XIAOMI_TISSOT
+#ifdef CONFIG_MACH_XIAOMI_VINCE
 	if (batt_soc == FULL_SOC_RAW)
 		chip->batt_info[BATT_INFO_SOC] = 100;
 #endif
@@ -4657,15 +4657,15 @@ static int fg_power_get_property(struct power_supply *psy,
 			val->intval = 1;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
-#ifdef CONFIG_MACH_XIAOMI_TISSOT
-		val->intval = 3080000;
+#ifdef CONFIG_MACH_XIAOMI_VINCE
+		val->intval = 4000000;
 #else
 		val->intval = chip->nom_cap_uah;
 #endif
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
-#ifdef CONFIG_MACH_XIAOMI_TISSOT
-		val->intval = 3080000;
+#ifdef CONFIG_MACH_XIAOMI_VINCE
+		val->intval = 4000000;
 #else
 		val->intval = chip->learning_data.learned_cc_uah;
 #endif
@@ -6484,7 +6484,7 @@ wait:
 		goto no_profile;
 	}
 
-#ifdef CONFIG_MACH_XIAOMI_TISSOT
+#ifdef CONFIG_MACH_XIAOMI_VINCE
 	if (!chip->input_present)
 		vbat_in_range = get_vbat_est_diff(chip)
 			< 80 * 1000;
@@ -8070,7 +8070,7 @@ static int fg_common_hw_init(struct fg_chip *chip)
 		}
 	}
 
-#if (defined CONFIG_MACH_XIAOMI_MIDO) || (defined CONFIG_MACH_XIAOMI_TISSOT)
+#if (defined CONFIG_MACH_XIAOMI_MIDO) || (defined CONFIG_MACH_XIAOMI_TISSOT) || (defined CONFIG_MACH_XIAOMI_VINCE)
 	rc = fg_mem_masked_write(chip, settings[FG_MEM_DELTA_SOC].address, 0xFF, 1,
 #else
 	rc = fg_mem_masked_write(chip, settings[FG_MEM_DELTA_SOC].address, 0xFF,
