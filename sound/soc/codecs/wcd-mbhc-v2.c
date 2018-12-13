@@ -1,5 +1,4 @@
 /* Copyright (c) 2015-2017, The Linux Foundation. All rights reserved.
- * Copyright (C) 2018 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -706,8 +705,7 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 			printk("%s:jack_type is 0x100, off pa to compute imp\n",__func__);
 			wcd_mbhc_set_and_turnoff_hph_padac(mbhc);
 		 }
-
-		 if (mbhc->mbhc_cb->hph_pa_on_status)
+ 		 if (mbhc->mbhc_cb->hph_pa_on_status)
 			is_pa_on = mbhc->mbhc_cb->hph_pa_on_status(codec);
 
 		if (mbhc->impedance_detect &&
@@ -1243,7 +1241,7 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 
 	WCD_MBHC_REG_READ(WCD_MBHC_BTN_RESULT, btn_result);
 	WCD_MBHC_REG_READ(WCD_MBHC_HS_COMP_RESULT, hs_comp_res);
-
+	
 	printk("[%s]=====rc=%d, btn_result=%d, hs_comp_res=%d\n", __FUNCTION__, rc, btn_result, hs_comp_res);
 	if (!rc) {
 		pr_debug("%s No btn press interrupt\n", __func__);
@@ -2433,7 +2431,7 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_codec *codec,
 	const char *gnd_switch = "qcom,msm-mbhc-gnd-swh";
 
 	pr_debug("%s: enter\n", __func__);
-
+	
 	accdet_data.name = "h2w";
 	accdet_data.index = 0;
 	accdet_data.state = 0;
@@ -2441,8 +2439,7 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_codec *codec,
 	if (ret) {
 		dev_err(card->dev,"[Accdet]switch_dev_register returned:%d!\n", ret);
 		return -1;
-
-	}
+ 	}
 
 	ret = of_property_read_u32(card->dev->of_node, hph_switch, &hph_swh);
 	if (ret) {
