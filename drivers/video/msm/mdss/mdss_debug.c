@@ -430,12 +430,15 @@ static bool mdss_debug_base_is_valid_range(u32 off, u32 cnt)
 	struct mdss_debug_data *mdd = mdata->debug_inf.debug_data;
 	struct range_dump_node *node;
 	struct mdss_debug_base *base;
- 	pr_debug("check offset=0x%x cnt=0x%x\n", off, cnt);
- 	list_for_each_entry(base, &mdd->base_list, head) {
+
+	pr_debug("check offset=0x%x cnt=0x%x\n", off, cnt);
+
+	list_for_each_entry(base, &mdd->base_list, head) {
 		list_for_each_entry(node, &base->dump_list, head) {
 			pr_debug("%s: start=0x%x end=0x%x\n", node->range_name,
 			node->offset.start, node->offset.end);
- 			if (node->offset.start <= off
+
+			if (node->offset.start <= off
 					&& off <= node->offset.end
 					&& off + cnt <= node->offset.end) {
 				pr_debug("valid range requested\n");
@@ -443,7 +446,8 @@ static bool mdss_debug_base_is_valid_range(u32 off, u32 cnt)
 			}
 		}
 	}
- 	pr_err("invalid range requested\n");
+
+	pr_err("invalid range requested\n");
 	return false;
 }
 
@@ -478,6 +482,9 @@ static ssize_t mdss_debug_base_offset_write(struct file *file,
 	if (cnt > (dbg->max_offset - off))
 		cnt = dbg->max_offset - off;
 	
+	if (!mdss_debug_base_is_valid_range(off, cnt))
+		return -EINVAL;
+
 	if (!mdss_debug_base_is_valid_range(off, cnt))
 		return -EINVAL;
 
