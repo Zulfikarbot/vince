@@ -3939,31 +3939,6 @@ static void check_battery_type(struct smbchg_chip *chip)
 	}
 }
 
-#define call_current_max 2400
-#define d1_call_current_max 2600
-void smbchg_set_calling_current(struct smbchg_chip *chip)
-{
-	enum power_supply_type usb_supply_type;
-	char *usb_type_name = "null";
-
-	read_usb_type(chip, &usb_type_name, &usb_supply_type);
-	pr_smb(PR_MISC, "chip->call_state =%d, usb_supply_type =%d\n", chip->call_state, usb_supply_type);
-	if ((chip->call_state == 0)) {
-		if (usb_supply_type == POWER_SUPPLY_TYPE_USB_DCP) {
-#if defined(CONFIG_D1_ROSY)
-			pr_smb(PR_MISC, "call_icl_voltage vote 2600mA when calling\n");
-			vote(chip->usb_icl_votable, CALL_ICL_VOTER, true, d1_call_current_max);
-#else
-			pr_smb(PR_MISC, "call_icl_voltage vote 2400mA when calling\n");
-			vote(chip->usb_icl_votable, CALL_ICL_VOTER, true, call_current_max);
-#endif
-		}
-	} else {
-		pr_smb(PR_MISC, "call_icl_volter false");
-		vote(chip->usb_icl_votable, CALL_ICL_VOTER, false, 0);
-	}
-}
-
 static int smbchg_otg_regulator_enable(struct regulator_dev *rdev)
 {
 	int rc = 0;
@@ -7870,7 +7845,7 @@ err:
 }
 
 #define DEFAULT_VLED_MAX_UV		3500000
-#define DEFAULT_FCC_MA			3000
+#define DEFAULT_FCC_MA			2000
 static int smb_parse_dt(struct smbchg_chip *chip)
 {
 	int rc = 0, ocp_thresh = -EINVAL;
