@@ -7142,7 +7142,6 @@ static int __iw_get_char_setnone(struct net_device *dev,
             break;
         }
 #endif
-
         case WE_GET_CFG:
         {
             hdd_cfg_get_config(WLAN_HDD_GET_CTX(pAdapter), extra, WE_MAX_STR_LEN);

@@ -4117,7 +4117,6 @@ typedef struct
    char *value;
 }tCfgIniEntry;
 
-
 /* convert string to 6 bytes mac address
  * 00AA00BB00CC -> 0x00 0xAA 0x00 0xBB 0x00 0xCC
  */
@@ -4243,6 +4242,7 @@ config_exit:
    release_firmware(fw);
    return vos_status;
 }
+
 
 static VOS_STATUS hdd_apply_cfg_ini( hdd_context_t * pHddCtx,
     tCfgIniEntry* iniTable, unsigned long entries);
