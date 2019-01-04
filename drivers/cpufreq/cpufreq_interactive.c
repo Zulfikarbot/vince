@@ -475,22 +475,27 @@ static void cpufreq_interactive_timer(unsigned long data)
 	int cpu, i;
 	int new_load_pct = 0;
 	int prev_l, pred_l = 0;
+#if defined(CONFIG_MSM_PERFORMANCE) || defined(CONFIG_SCHED_CORE_CTL)
 	struct cpufreq_govinfo govinfo;
+#endif
 	bool skip_hispeed_logic, skip_min_sample_time;
 	bool jump_to_max_no_ts = false;
 	bool jump_to_max = false;
+	bool start_hyst = true;
 
 	if (!down_read_trylock(&ppol->enable_sem))
 		return;
 	if (!ppol->governor_enabled)
 		goto exit;
+	if (ppol->policy->min == ppol->policy->max)
+		goto rearm;
 
 	now = ktime_to_us(ktime_get());
 
 	spin_lock_irqsave(&ppol->target_freq_lock, flags);
 	spin_lock(&ppol->load_lock);
 
-	skip_hispeed_logic = tunables->enable_prediction ? true :
+	skip_hispeed_logic =
 		tunables->ignore_hispeed_on_notif && ppol->notif_pending;
 	skip_min_sample_time = tunables->fast_ramp_down && ppol->notif_pending;
 	ppol->notif_pending = false;
@@ -574,7 +579,7 @@ static void cpufreq_interactive_timer(unsigned long data)
 	}
 
 	new_freq = chosen_freq;
-	if (jump_to_max_no_ts || jump_to_max) {
+	if (false && (jump_to_max_no_ts || jump_to_max)) {
 		new_freq = ppol->policy->cpuinfo.max_freq;
 	} else if (!skip_hispeed_logic) {
 		if (pol_load >= tunables->go_hispeed_load ||
@@ -588,8 +593,12 @@ static void cpufreq_interactive_timer(unsigned long data)
 	}
 
 	if (now - ppol->max_freq_hyst_start_time <
-	    tunables->max_freq_hysteresis)
+	    tunables->max_freq_hysteresis) {
+		if (new_freq < ppol->policy->max &&
+				ppol->policy->max <= tunables->hispeed_freq)
+			start_hyst = false;
 		new_freq = max(tunables->hispeed_freq, new_freq);
+	}
 
 	if (!skip_hispeed_logic &&
 	    ppol->target_freq >= tunables->hispeed_freq &&
@@ -646,7 +655,7 @@ static void cpufreq_interactive_timer(unsigned long data)
 		ppol->floor_validate_time = now;
 	}
 
-	if (new_freq >= ppol->policy->max && !jump_to_max_no_ts)
+	if (start_hyst && new_freq >= ppol->policy->max && !jump_to_max_no_ts)
 		ppol->max_freq_hyst_start_time = now;
 
 	if (ppol->target_freq == new_freq &&
@@ -672,6 +681,7 @@ rearm:
 	if (!timer_pending(&ppol->policy_timer))
 		cpufreq_interactive_timer_resched(data, false);
 
+#if defined(CONFIG_MSM_PERFORMANCE) || defined(CONFIG_SCHED_CORE_CTL)
 	/*
 	 * Send govinfo notification.
 	 * Govinfo notification could potentially wake up another thread
@@ -687,6 +697,7 @@ rearm:
 		atomic_notifier_call_chain(&cpufreq_govinfo_notifier_list,
 					   CPUFREQ_LOAD_CHANGE, &govinfo);
 	}
+#endif
 
 exit:
 	up_read(&ppol->enable_sem);
@@ -852,7 +863,7 @@ static int cpufreq_interactive_notifier(
 	int cpu;
 	unsigned long flags;
 
-	if (val == CPUFREQ_POSTCHANGE) {
+	if (val == CPUFREQ_PRECHANGE) {
 		ppol = per_cpu(polinfo, freq->cpu);
 		if (!ppol)
 			return 0;
