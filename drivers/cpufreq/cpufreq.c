@@ -615,9 +615,9 @@ static ssize_t store_##file_name					\
 	if (&policy->object == &policy->min)				\
 		return count;						\
 									\
-	memcpy(&new_policy, policy, sizeof(*policy));			\
-	new_policy.min = policy->user_policy.min;			\
-	new_policy.max = policy->user_policy.max;			\
+	if (&policy->object == &policy->max &&				\
+			!strncmp(current->comm, "perfd", 5))		\
+		return count;						\
 									\
 	new_policy.min = new_policy.user_policy.min;			\
 	new_policy.max = new_policy.user_policy.max;			\
