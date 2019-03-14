@@ -4974,8 +4974,91 @@ static int smbchg_restricted_charging(struct smbchg_chip *chip, bool enable)
 /*Modifiy by HQ-zmc [Date: 2018-04-04 15:23:36]*/
 static bool tp_usb_plugin;
 
-bool *check_charge_mode(void){
-	return &tp_usb_plugin;
+#define FACTORY_DISCHAGE_CAPACITY_THRESHOLD 80
+static int smbchg_factory_mode_controlled_by_capacity(struct smbchg_chip *chip)
+{
+#ifdef WT_COMPILE_FACTORY_VERSION
+	int rc, capacity_now;
+
+	capacity_now = get_prop_batt_capacity(chip);
+	if ((capacity_now >= FACTORY_DISCHAGE_CAPACITY_THRESHOLD) && (capacity_now <= 100)) {
+		pr_smb(PR_DUMP, "capacity_now = %d, disable charge\n", capacity_now);
+		rc = smbchg_charging_en(chip, false);
+		if (rc) {
+			pr_err("failed to disable charge in factory mode\n");
+			return rc;
+		}
+	} else if ((capacity_now >= 0) && (capacity_now < FACTORY_DISCHAGE_CAPACITY_THRESHOLD)) {
+		pr_smb(PR_DUMP, "capacity_now = %d, enable charge\n", capacity_now);
+		rc = smbchg_charging_en(chip, true);
+		if (rc) {
+			pr_err("failed  to enable charge in factory mode\n");
+			return rc;
+		}
+	}
+#endif
+	return 0;
+}
+
+
+
+#define MONITOR_PERIOD 20000
+static bool in_cool_low;
+static bool in_cool_high;
+static int smbchg_get_iusb(struct smbchg_chip *chip);
+static void smbchg_monitor_charging_temp_5_work(struct work_struct *work)
+{
+	int battery_temperature;
+	bool usb_preset;
+	int batt_temp;
+	int chg_current;
+	int usb_current;
+	struct smbchg_chip *chip = container_of(work, struct smbchg_chip, monitor_charging_temp_5_work.work);
+
+	usb_preset = is_usb_present(chip);
+	pr_smb(PR_DUMP, "monitor begin work. usb_preset = %d\n", usb_preset);
+	if (usb_preset) {
+		set_property_on_fg(chip, POWER_SUPPLY_PROP_UPDATE_NOW, 1);
+		battery_temperature = get_prop_batt_temp(chip);
+		if ((battery_temperature > chip->customize_cool_low_limit)
+					&& (battery_temperature <= chip->customize_cool_high_limit)) {
+			if ((chip->fcc_customize_cool_ma > 0) && (!in_cool_low)) {
+				pr_smb(PR_DUMP, "between temp range 0 - 5\n");
+				if (chip->customize_cool_high_limit < 60)
+					chip->customize_cool_high_limit = 60;
+
+				in_cool_low = true;
+				in_cool_high = false;
+				vote(chip->fcc_votable, RESTRICTED_CHG_FCC_VOTER, true, chip->fcc_customize_cool_ma);
+			}
+		} else {
+			if (chip->batt_cool) {
+
+				if ((chip->fcc_batt_cool_ma > 0) && (!in_cool_high) && (battery_temperature > chip->customize_cool_high_limit)) {
+					pr_smb(PR_DUMP, "between temp range 5 - 15\n");
+					if (chip->customize_cool_high_limit > 50)
+						chip->customize_cool_high_limit = 50;
+
+					in_cool_low = false;
+					in_cool_high = true;
+					vote(chip->fcc_votable, RESTRICTED_CHG_FCC_VOTER, true, chip->fcc_batt_cool_ma);
+				}
+			} else {
+				in_cool_low = false;
+				in_cool_high = false;
+			}
+		}
+	}
+
+	batt_temp   =	get_prop_batt_temp(chip)/10;
+	chg_current =	get_prop_batt_current_now(chip);
+	usb_current =	smbchg_get_iusb(chip);
+	pr_smb(PR_DUMP, "@**batt_temp=%d,chg_current=%d,usb_current=%d\n", batt_temp, chg_current, usb_current);
+
+	smbchg_factory_mode_controlled_by_capacity(chip);
+
+	queue_delayed_work(system_power_efficient_wq, &chip->monitor_charging_temp_5_work, msecs_to_jiffies(MONITOR_PERIOD));
+
 }
 
 static void handle_usb_removal(struct smbchg_chip *chip)
