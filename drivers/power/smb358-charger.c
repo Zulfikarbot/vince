@@ -178,6 +178,29 @@
 #define SMB358_DEFAULT_BATT_CAPACITY	50
 #define SMB358_BATT_GOOD_THRE_2P5	0x1
 
+#ifdef CONFIG_C3N_SMB358
+#define BATTERY_FCC 3030
+#else
+#define BATTERY_FCC 3000
+#endif
+
+#ifdef CONFIG_QUICK_CHARGE
+#include <linux/Quick_Charge.h>
+#endif
+
+int pre_usb_current_ma = -EINVAL;
+bool thermal = false;
+bool recovery = false;
+int fastmmi_mode = 0;
+
+#define DEBUG
+
+extern struct device_node *of_batterydata_get_best_profile(
+		const struct device_node *batterydata_container_node,
+		const char *psy_name,  const char  *batt_type);
+
+
+
 enum {
 	USER		= BIT(0),
 	THERMAL		= BIT(1),
@@ -2211,10 +2234,25 @@ static int smb_parse_dt(struct smb358_charger *chip)
 	else
 		chip->chg_valid_act_low = gpio_flags & OF_GPIO_ACTIVE_LOW;
 
+        #ifdef CONFIG_QUICK_CHARGE
+	// If Quick Charge is Enabled, then Set the Max. Current to the Value of Dynamic Current of the Driver.
+	if (QC_Toggle == 1)
+	   chip->fastchg_current_max_ma = Dynamic_Current;
+	else
+	{
+	// If Quick Charge is Disabled, then Restore the Max. Current Value to the Default as Specified in DTB.
 	rc = of_property_read_u32(node, "qcom,fastchg-current-max-ma",
 						&chip->fastchg_current_max_ma);
 	if (rc)
 		chip->fastchg_current_max_ma = SMB358_FAST_CHG_MAX_MA;
+	}
+        #else
+	// If Quick Charge is not Compiled, then Read the Default Value only
+	rc = of_property_read_u32(node, "qcom,fastchg-current-max-ma",
+						&chip->fastchg_current_max_ma);
+	if (rc)
+		chip->fastchg_current_max_ma = SMB358_FAST_CHG_MAX_MA;
+        #endif
 
 	chip->iterm_disabled = of_property_read_bool(node,
 					"qcom,iterm-disabled");
