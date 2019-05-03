@@ -982,6 +982,20 @@ static int smb358_get_prop_batt_capacity(struct smb358_charger *chip)
 	return SMB358_DEFAULT_BATT_CAPACITY;
 }
 
+static int get_prop_current_now(struct smb358_charger *chip)
+{
+	union power_supply_propval ret = {0,};
+	if (chip->bms_psy) {
+		chip->bms_psy->get_property(chip->bms_psy,
+			POWER_SUPPLY_PROP_CURRENT_NOW, &ret);
+			pr_debug("xujismbcur = %d\n", ret.intval);
+			return ret.intval;
+		} else {
+			pr_debug("No BMS supply registered return 0\n");
+		}
+	return 2000;
+}
+
 static int smb358_get_prop_charge_type(struct smb358_charger *chip)
 {
 	int rc;
