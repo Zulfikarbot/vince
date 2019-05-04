@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/arm64 3.18.120 Kernel Configuration
+# Linux/arm64 3.18.139 Kernel Configuration
 #
 CONFIG_ARM64=y
 CONFIG_64BIT=y
@@ -2200,6 +2200,7 @@ CONFIG_BATTERY_BCL=y
 # CONFIG_QPNP_TYPEC is not set
 CONFIG_MSM_BCL_CTL=y
 CONFIG_MSM_BCL_PERIPHERAL_CTL=y
+CONFIG_QUICK_CHARGE=y
 CONFIG_POWER_RESET=y
 # CONFIG_POWER_RESET_GPIO is not set
 # CONFIG_POWER_RESET_GPIO_RESTART is not set
